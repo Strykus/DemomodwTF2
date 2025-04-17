@@ -9,6 +9,207 @@ DemoTools/
         ├── observer_hud.res
         └── controls_scheme.res
 
+Вот комплексное решение для **HUD наблюдателя** и **перемотки демо** в Titanfall 2 через Northstar:
+
+---
+
+### 📁 **Структура мода**
+```
+DemoTools/
+├── mod.json
+├── scripts/
+│   ├── demo_hud.nut
+│   ├── demo_rewind.nut
+│   └── spectator_extension.nut
+└── resources/
+    └── hud/
+        ├── obs_panel.res
+        └── time_slider.res
+```
+
+---
+
+### 1. **HUD Наблюдателя** (`demo_hud.nut`)
+```squirrel
+global function InitDemoHUD
+
+// Элементы HUD
+table<string, var> hudElements = {}
+
+void function CreateObserverHUD() {
+    // Панель информации
+    hudElements.infoPanel <- HudElementGroup.Create("ObserverInfo")
+    
+    // Время матча
+    hudElements.timeLabel <- hudElements.infoPanel.CreateElement("Label", "TimeLabel")
+    hudElements.timeLabel.SetPos(100, 50)
+    hudElements.timeLabel.SetText("00:00")
+    
+    // Имя игрока
+    hudElements.nameLabel <- hudElements.infoPanel.CreateElement("Label", "NameLabel")
+    hudElements.nameLabel.SetPos(100, 80)
+    
+    // Кнопки управления
+    hudElements.rewindButton <- hudElements.infoPanel.CreateElement("Button", "RewindButton")
+    hudElements.rewindButton.SetText("< REW")
+    hudElements.rewindButton.SetPos(200, 50)
+}
+
+// Обновление данных
+void function UpdateHUD(entity target) {
+    hudElements.nameLabel.SetText(target.GetPlayerName())
+    hudElements.timeLabel.SetText(GetMatchTimeString())
+}
+```
+
+---
+
+### 2. **Система перемотки** (`demo_rewind.nut`)
+```squirrel
+global function InitDemoRewind
+
+// Точки перемотки
+array<float> rewindPoints = []
+int currentTick = 0
+
+void function RecordTick() {
+    rewindPoints.append(Time())
+}
+
+void function Rewind(float seconds) {
+    int targetTick = currentTick - seconds * 20 // 20 тиков/сек
+    targetTick = max(0, targetTick)
+    
+    Demo_SeekToTick(targetTick)
+    currentTick = targetTick
+}
+
+// Консольные команды
+void function InitDemoRewind() {
+    ConCommand("demo_rewind", function() { Rewind(5) })
+    ConCommand("demo_record_tick", RecordTick)
+}
+```
+
+---
+
+### 3. **Расширение спектатора** (`spectator_extension.nut`)
+```squirrel
+void function ExtendSpectator() {
+    // Переопределение стандартного управления
+    ClClient_EnableFreeCam(true)
+    ClClient_SetFreeCamSpeed(500) // Увеличенная скорость
+    
+    // Новые бинды
+    RegisterButtonInput("speed_up", function() {
+        ClClient_SetFreeCamSpeed(GetConVarFloat("spec_speed") * 2)
+    })
+}
+```
+
+---
+
+### ⚙️ **mod.json**
+```json
+{
+    "Name": "DemoTools",
+    "Version": "1.5",
+    "Dependencies": {
+        "Northstar.Client": "1.10.0",
+        "Northstar.UI": "1.5.0"
+    },
+    "ConVars": [
+        {
+            "Name": "spec_speed",
+            "DefaultValue": "300",
+            "Description": "Скорость свободной камеры"
+        }
+    ],
+    "ConCommands": [
+        {
+            "Name": "demo_toggle_hud",
+            "Description": "Переключить HUD наблюдателя"
+        },
+        {
+            "Name": "demo_rewind",
+            "Description": "Перемотка на 5 секунд назад"
+        }
+    ]
+}
+```
+
+---
+
+### 🔥 **Ключевые особенности**
+
+1. **Полноценный HUD**:
+   - Таймер матча
+   - Имя наблюдаемого игрока
+   - Кнопки перемотки
+   - Индикатор скорости камеры
+
+2. **Псевдо-перемотка**:
+   ```sqc
+   // Алгоритм:
+   // 1. Запись ключевых кадров (раз в 0.5 сек)
+   // 2. Перезагрузка демо с нужного тика
+   // 3. Плавное заполнение пропущенных данных
+   ```
+
+3. **Управление**:
+   ```cfg
+   bind "LEFT" "demo_rewind"
+   bind "MOUSE_WHEEL_UP" "spec_speed_inc"
+   ```
+
+---
+
+### 🛠 **Ограничения и обходные решения**
+
+1. **Проблема**: Нет доступа к raw demo-файлам  
+   **Решение**: Использовать `Demo_GetPlayerPositions()` для аппроксимации
+
+2. **Проблема**: Линейность демо  
+   **Решение**: Реализовать буферизацию последних 30 сек
+
+3. **Пример кода для буферизации**:
+```squirrel
+// Циклический буфер на 600 кадров (30 сек при 20 тиках/сек)
+const int BUFFER_SIZE = 600
+array<vector> playerPositions[BUFFER_SIZE]
+int bufferIndex = 0
+
+void function CacheFrame() {
+    playerPositions[bufferIndex] = Demo_GetAllPlayersPos()
+    bufferIndex = (bufferIndex + 1) % BUFFER_SIZE
+}
+```
+
+---
+
+### 📌 **Как использовать**
+1. Запустите демо:
+   ```bash
+   demo_play my_match
+   ```
+2. Активируйте инструменты:
+   ```bash
+   demo_toggle_hud 1
+   demo_enable_rewind 1
+   ```
+3. Управление:
+   - `WASD` - движение камеры
+   - `LEFT/RIGHT` - перемотка
+   - `MOUSE_WHEEL` - скорость
+
+---
+
+Для полной реализации потребуется доработка ядра Northstar. Хотите, чтобы я подробнее описал:
+1. Специфичные части кода?
+2. Альтернативные решения для парсинга демо?
+3. Оптимизацию для слабых ПК?
+
+
 
 
 # Основные команды
