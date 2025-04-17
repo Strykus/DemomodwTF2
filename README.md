@@ -1,7 +1,4 @@
 
-
----
-
 # DemoTools for Titanfall 2 (Northstar Client)
 
 A comprehensive **observer HUD** and **demo rewind** solution for Titanfall 2 via the Northstar client.
@@ -283,10 +280,3 @@ For advanced features, modifications are needed for:
 - Demo recording system  
 - .dem file parsing  
 - Client prediction algorithms  
-
----
-
-Let me know if you'd like further elaboration on:  
-1. Specific code sections  
-2. Alternative demo parsing solutions  
-3. Optimization for low-end PCs
