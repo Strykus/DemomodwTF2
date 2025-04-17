@@ -1,0 +1,35 @@
+{
+    "Name": "DemoTools",
+    "Version": "1.0",
+    "Description": "Enhanced spectator tools for demo playback",
+    "Authors": ["YourName"],
+    "Dependencies": {
+        "Northstar.Client": "1.10.0"
+    },
+    "ConVars": [
+        {
+            "Name": "spec_speed",
+            "DefaultValue": "350",
+            "Description": "Free camera speed"
+        },
+        {
+            "Name": "spec_hud_enabled",
+            "DefaultValue": "1",
+            "Description": "Toggle observer HUD"
+        }
+    ],
+    "ConCommands": [
+        {
+            "Name": "spec_next",
+            "Description": "Switch to next player"
+        },
+        {
+            "Name": "spec_prev",
+            "Description": "Switch to previous player"
+        },
+        {
+            "Name": "spec_freecam",
+            "Description": "Toggle free camera"
+        }
+    ]
+}
